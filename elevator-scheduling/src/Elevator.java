@@ -1,56 +1,42 @@
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Scanner;
+import java.util.*;
 
 public class Elevator extends Thread {
     final int maxFloor;
-    List<Integer> outRequest;
-    List<Integer> inRequest;
+    final int changeDir;
+    List<Request> outRequest;
+    List<Request> inRequest;
     int currentFloor;
-    List<Integer> aboveCurrent;
-    List<Integer> belowCurrent;
+
+    boolean ageFlag = false;
+    Request highAge;
+
     TakeInput input = new TakeInput();
     Move state;
 
 
-    public Elevator(List<Integer> outRequest, List<Integer> inRequest, int currentFloor, int maxFloor) {
-        this.outRequest = outRequest;
-        this.inRequest = inRequest;
+    public Elevator(int currentFloor, int maxFloor, int[] out, int[] in) {
         this.currentFloor = currentFloor;
         this.maxFloor = maxFloor;
-
-        if (currentFloor <= maxFloor / 2) state = Move.DOWN;
-        else state = Move.UP;
-
-        aboveCurrent = Collections.synchronizedList(new ArrayList<>());
-        belowCurrent = Collections.synchronizedList(new ArrayList<>());
-
-        for (int i : outRequest) {
-            if (i >= currentFloor) aboveCurrent.add(i);
-            else belowCurrent.add(i);
+        changeDir = maxFloor / 2;
+        outRequest = new ArrayList<>();
+        inRequest = new ArrayList<>();
+        for (int i : in) {
+            inRequest.add(new Request(i));
         }
-        for (int i : inRequest) {
-            if (i >= currentFloor) aboveCurrent.add(i);
-            else belowCurrent.add(i);
+        for (int i : out) {
+            outRequest.add(new Request(i));
         }
-        Collections.sort(aboveCurrent);
-        Collections.sort(belowCurrent);
-        input.start();
-        try {
-            Thread.sleep(1000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        state = Move.STOP;
+
+        Collections.sort(inRequest);
+        Collections.sort(outRequest);
         this.start();
+        input.start();
     }
 
     public void moveDown() {
         currentFloor--;
-        if (currentFloor == 0 || belowCurrent.isEmpty()) state = Move.UP;
-        System.out.format("Floor: %d, Moving: %s\n", currentFloor, state);
-        System.out.println(aboveCurrent);
-        System.out.println(belowCurrent);
+
         try {
             Thread.sleep(2000);
         } catch (Exception e) {
@@ -60,10 +46,7 @@ public class Elevator extends Thread {
 
     public void moveUp() {
         currentFloor++;
-        if (currentFloor == maxFloor - 1 || aboveCurrent.isEmpty()) state = Move.DOWN;
-        System.out.format("Floor: %d, Moving: %s\n", currentFloor, state);
-        System.out.println(aboveCurrent);
-        System.out.println(belowCurrent);
+
         try {
             Thread.sleep(2000);
         } catch (Exception e) {
@@ -71,35 +54,113 @@ public class Elevator extends Thread {
         }
     }
 
-    public void addRequest(int floor) {
-        if (floor >= currentFloor && !aboveCurrent.contains(floor)) {
-            aboveCurrent.add(floor);
-            Collections.sort(aboveCurrent);
-        } else if (floor < currentFloor && !belowCurrent.contains(floor)) {
-            belowCurrent.add(floor);
-            Collections.sort(belowCurrent);
+    public void move() {
+        if (state == Move.UP) moveUp();
+        else moveDown();
+        state = Move.STOP;
+    }
+
+    public void addAge() {
+        for (Request r : inRequest) {
+            r.age++;
+        }
+        for (Request r : outRequest) {
+            r.age++;
         }
 
+    }
 
+    public Request highAge(Request currentGoal) {
+        Request age = currentGoal;
+        for (Request r : inRequest) {
+            if (r.age >= age.age && r.age >= maxFloor) {
+                age = r;
+                ageFlag = true;
+                highAge = r;
+            }
+        }
+        for (Request r : outRequest) {
+            if (r.age >= age.age && r.age >= maxFloor) {
+                age = r;
+                ageFlag = true;
+                highAge = r;
+            }
+        }
+        if (age.age >= maxFloor) return age;
+        return currentGoal;
+    }
+
+    public void addRequest(String req) {
+        String[] args = req.split(" ");
+        Request r = new Request(Integer.parseInt(args[1]));
+        for (Request request : inRequest) {
+            if (request.floor == r.floor) return;
+        }
+        for (Request request : outRequest) {
+            if (request.floor == r.floor) return;
+        }
+        if (args[0].equalsIgnoreCase("in")) {
+            inRequest.add(r);
+            Collections.sort(inRequest);
+        } else if (args[0].equalsIgnoreCase("out")) {
+            outRequest.add(r);
+            Collections.sort(outRequest);
+        }
     }
 
     @Override
     public void run() {
         while (true) {
-            if (state == Move.DOWN) {
-                while (!belowCurrent.isEmpty()) {
-                    if (currentFloor == belowCurrent.get(belowCurrent.size() - 1))
-                        belowCurrent.remove(belowCurrent.size() - 1);
-                    moveDown();
+            Request finalRequest = new Request(currentFloor);
+            if (!ageFlag) {
+                int dis = Integer.MAX_VALUE;
+                for (Request request : outRequest) {
+                    if (Math.abs(request.floor - currentFloor) <= dis) {
+                        finalRequest = request;
+                        dis = Math.abs(request.floor - currentFloor);
+                    }
+                }
+                for (Request request : inRequest) {
+                    if (Math.abs(request.floor - currentFloor) <= dis) {
+                        finalRequest = request;
+                        dis = Math.abs(request.floor - currentFloor);
+                    }
+                }
+                finalRequest = highAge(finalRequest);
+                System.out.println("out: " + outRequest + "\n" + " in: " + inRequest);
+                System.out.println("Current floor: " + currentFloor + "   Selected floor: " + finalRequest);
+            } else {
+                finalRequest = highAge;
+                System.out.println("out: " + outRequest + "\n" + " in: " + inRequest);
+                System.out.println("Current floor: " + currentFloor + "   Selected floor: " + finalRequest);
+            }
+
+
+            if (state == Move.STOP) {
+                if (currentFloor - finalRequest.floor >= 0) {
+                    state = Move.DOWN;
+                } else state = Move.UP;
+            } else {
+                if (Math.abs(finalRequest.floor - currentFloor) >= changeDir && !ageFlag) {
+                    if (state == Move.DOWN) state = Move.UP;
+                    else state = Move.DOWN;
                 }
             }
-            else if (state == Move.UP) {
-                while (!aboveCurrent.isEmpty()) {
-                    if (currentFloor == aboveCurrent.get(0))
-                        aboveCurrent.remove(0);
-                    moveUp();
+            if (!(inRequest.isEmpty() && outRequest.isEmpty())) move();
+            else {
+                try {
+                    state = Move.STOP;
+                    Thread.sleep(5000);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
                 }
             }
+            addAge();
+            if (highAge != null && currentFloor == highAge.floor) {
+                ageFlag = false;
+            }
+            inRequest.removeIf(r -> r.floor == currentFloor);
+            outRequest.removeIf(r -> r.floor == currentFloor);
         }
     }
 
@@ -108,11 +169,11 @@ public class Elevator extends Thread {
 
         @Override
         public void run() {
-            while (true) addRequest(input.nextInt());
+            while (true) addRequest(input.nextLine()); // format is "out/in {request}"
         }
     }
 
     public enum Move {
-        UP, DOWN;
+        UP, DOWN, STOP
     }
 }
