@@ -1,38 +1,43 @@
 import java.util.*;
 
 public class Elevator extends Thread {
-    final int maxFloor;
-    final int changeDir;
-    List<Request> outRequest;
-    List<Request> inRequest;
-    int currentFloor;
+    final int maxFloor; // How many floors
+    int changeDir; // Minimum floor diff for changing direction
+    ArrayList<Request> outRequest; // list for outside requests
+    ArrayList<Request> inRequest; // list for inside requests
+    int currentFloor; // Current floor
 
-    boolean ageFlag = false;
-    Request highAge;
+    boolean ageFlag = false; // becomes true when we have an aged request
+    Request highAge; // keeps the aged request
 
-    TakeInput input = new TakeInput();
-    Move state;
+    TakeInput input = new TakeInput(); // Thread for getting input from commandline
+    Move state; // State of the elevator [STOP, UP, DOWN]
 
+    Move lastMove;
+
+    static long TRAVELING_TIME = 5000;
 
     public Elevator(int currentFloor, int maxFloor, int[] out, int[] in) {
         this.currentFloor = currentFloor;
         this.maxFloor = maxFloor;
         changeDir = maxFloor / 2;
+
         outRequest = new ArrayList<>();
         inRequest = new ArrayList<>();
+
         for (int i : in) {
-            inRequest.add(new Request(i));
+            inRequest.add(new Request(i)); // Add initial values
         }
         for (int i : out) {
-            outRequest.add(new Request(i));
+            outRequest.add(new Request(i)); // Add initial values
         }
-        state = Move.STOP;
+        state = Move.STOP; // Elevator state is STOP
 
-        Collections.sort(inRequest);
-        Collections.sort(outRequest);
+        Collections.sort(inRequest); // sorting inside requests
+        Collections.sort(outRequest); // Sorting outside requests
     }
 
-    public void action(){
+    public void action() { // Starts elevator
         this.start();
         input.start();
     }
@@ -41,7 +46,7 @@ public class Elevator extends Thread {
         currentFloor--;
 
         try {
-            Thread.sleep(3000);
+            Thread.sleep(TRAVELING_TIME);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -51,7 +56,7 @@ public class Elevator extends Thread {
         currentFloor++;
 
         try {
-            Thread.sleep(3000);
+            Thread.sleep(TRAVELING_TIME);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -60,17 +65,17 @@ public class Elevator extends Thread {
     public void move() {
         if (state == Move.UP) moveUp();
         else moveDown();
+        lastMove = state;
         state = Move.STOP;
     }
 
     public void addAge() {
         for (Request r : inRequest) {
-            r.age++;
+            r.age += 2;
         }
         for (Request r : outRequest) {
             r.age++;
         }
-
     }
 
     public Request highAge(Request currentGoal) {
@@ -126,7 +131,12 @@ public class Elevator extends Thread {
                 }
                 for (Request request : inRequest) {
                     if (Math.abs(request.floor - currentFloor) <= dis) {
+                        Request temp = finalRequest;
                         finalRequest = request;
+                        if ((finalRequest.floor - currentFloor < 0 && lastMove == Move.UP) || (finalRequest.floor - currentFloor > 0 && lastMove == Move.DOWN)) {
+                            finalRequest = temp;
+                            continue;
+                        }
                         dis = Math.abs(request.floor - currentFloor);
                     }
                 }
@@ -152,7 +162,7 @@ public class Elevator extends Thread {
             else {
                 try {
                     state = Move.STOP;
-                    Thread.sleep(3000);
+                    Thread.sleep(TRAVELING_TIME);
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
@@ -165,7 +175,7 @@ public class Elevator extends Thread {
             outRequest.removeIf(r -> r.floor == currentFloor);
             long endTime = System.currentTimeMillis();
             try {
-                Thread.sleep(3100 - (endTime-startTime));
+                Thread.sleep(TRAVELING_TIME + 100 - (endTime - startTime));
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }

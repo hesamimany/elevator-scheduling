@@ -9,6 +9,7 @@ import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.ImagePattern;
 import javafx.scene.shape.Rectangle;
+import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
@@ -21,7 +22,7 @@ public class GUI extends Application {
 
     @Override
     public void start(Stage stage) throws Exception {
-        int[] out = {0, 14};
+        int[] out = {0};
         int[] in = {1, 2};
         elevator = new Elevator(3, 15, out, in); // An elevator instance
 
@@ -29,17 +30,31 @@ public class GUI extends Application {
         Image image = new Image(new FileInputStream("Imgs/ElevShape.png")); // Elevator image
         elevatorShape.setFill(new ImagePattern(image)); // Set the elevator shape
 
-        Timeline timeline = new Timeline(new KeyFrame(Duration.millis(2000), (ActionEvent event) -> { // Moves elevator to currentFloor value
-            index = elevator.currentFloor;
-            elevatorShape.setLayoutY(700 - (index * 50));
-        }));
+        VBox floorVBox = new VBox();
+        floorVBox.setLayoutX(292.5);
+
+        for (int i = 0; i < 15; i++) {
+            Rectangle rectangle = new Rectangle(25, 48, Color.WHITE);
+            rectangle.setStrokeWidth(1);
+            rectangle.setStroke(Color.BLACK);
+            floorVBox.getChildren().add(rectangle);
+        }
+
+        Text inText = new Text();
+        inText.setText("In requests: " + elevator.inRequest.toString());
+        inText.setX(650);
+        inText.setY(200);
+        Text outText = new Text();
+        outText.setText("Out requests: " + elevator.outRequest.toString());
+        outText.setX(700);
+        outText.setY(200);
 
         Pane pane = new Pane(elevatorShape); // Put the elevator on a pane
         elevatorShape.setLayoutX(292.5); // Elevator first position
         elevatorShape.setLayoutY(700 - (elevator.currentFloor) * 50);
 
         VBox vBox = new VBox(); // VBox for elevator buttons
-        vBox.setSpacing(26 - 1.0 / 15);
+        vBox.setSpacing(20 - 1.0 / 15);
         vBox.setPrefWidth(25);
 
         for (int i = 0; i < 15; i++) { // Loop that creates elevator buttons
@@ -63,13 +78,21 @@ public class GUI extends Application {
         vBox.setLayoutX(1);
         vBox.setLayoutY(1);
 
-        Group root = new Group(pane, vBox); // Group for elevator and buttons
+        vBox.getChildren().addAll(inText, outText);
+
+        Group root = new Group(floorVBox, pane, vBox); // Group for elevator and buttons
         Scene scene = new Scene(root, 450, 750); // Add group to the scene
         stage.setScene(scene); // Add scene to stage
         stage.setTitle("Elevator scheduling");
         stage.getIcons().add(new Image(new File("Imgs/ElevIcon.jpg").toURI().toString())); // Title bar icon
         stage.show();
 
+        Timeline timeline = new Timeline(new KeyFrame(Duration.millis(2000), (ActionEvent event) -> { // Moves elevator to currentFloor value
+            index = elevator.currentFloor;
+            elevatorShape.setLayoutY(700 - (index * 50));
+            inText.setText("In requests: " + elevator.inRequest.toString());
+            outText.setText("Out requests: " + elevator.outRequest.toString());
+        }));
         timeline.setCycleCount(Timeline.INDEFINITE); // Timeline cycles forever
         timeline.play(); // Start the timeline
         elevator.action(); // Start the elevator
