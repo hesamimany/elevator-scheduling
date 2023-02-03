@@ -30,6 +30,9 @@ public class Elevator extends Thread {
 
         Collections.sort(inRequest);
         Collections.sort(outRequest);
+    }
+
+    public void action(){
         this.start();
         input.start();
     }
@@ -38,7 +41,7 @@ public class Elevator extends Thread {
         currentFloor--;
 
         try {
-            Thread.sleep(2000);
+            Thread.sleep(3000);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -48,7 +51,7 @@ public class Elevator extends Thread {
         currentFloor++;
 
         try {
-            Thread.sleep(2000);
+            Thread.sleep(3000);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -111,6 +114,7 @@ public class Elevator extends Thread {
     @Override
     public void run() {
         while (true) {
+            long startTime = System.currentTimeMillis();
             Request finalRequest = new Request(currentFloor);
             if (!ageFlag) {
                 int dis = Integer.MAX_VALUE;
@@ -127,13 +131,11 @@ public class Elevator extends Thread {
                     }
                 }
                 finalRequest = highAge(finalRequest);
-                System.out.println("out: " + outRequest + "\n" + " in: " + inRequest);
-                System.out.println("Current floor: " + currentFloor + "   Selected floor: " + finalRequest);
             } else {
                 finalRequest = highAge;
-                System.out.println("out: " + outRequest + "\n" + " in: " + inRequest);
-                System.out.println("Current floor: " + currentFloor + "   Selected floor: " + finalRequest);
             }
+            System.out.println("out: " + outRequest + "\n" + " in: " + inRequest);
+            System.out.println("Current floor: " + currentFloor + "   Selected floor: " + finalRequest);
 
 
             if (state == Move.STOP) {
@@ -150,7 +152,7 @@ public class Elevator extends Thread {
             else {
                 try {
                     state = Move.STOP;
-                    Thread.sleep(5000);
+                    Thread.sleep(3000);
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
@@ -161,6 +163,12 @@ public class Elevator extends Thread {
             }
             inRequest.removeIf(r -> r.floor == currentFloor);
             outRequest.removeIf(r -> r.floor == currentFloor);
+            long endTime = System.currentTimeMillis();
+            try {
+                Thread.sleep(3100 - (endTime-startTime));
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 
