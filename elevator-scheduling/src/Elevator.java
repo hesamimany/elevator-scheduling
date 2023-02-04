@@ -15,7 +15,7 @@ public class Elevator extends Thread {
 
     Move lastMove;
 
-    static long TRAVELING_TIME = 5000;
+    static long TRAVELING_TIME = 3000;
 
     public Elevator(int currentFloor, int maxFloor, int[] out, int[] in) {
         this.currentFloor = currentFloor;
@@ -35,6 +35,12 @@ public class Elevator extends Thread {
 
         Collections.sort(inRequest); // sorting inside requests
         Collections.sort(outRequest); // Sorting outside requests
+
+        inRequest.removeIf(r -> r.floor == currentFloor);
+        outRequest.removeIf(r -> r.floor == currentFloor);
+
+        if (currentFloor <= maxFloor / 2) lastMove = Move.DOWN;
+        else lastMove = Move.UP;
     }
 
     public void action() { // Starts elevator
@@ -123,20 +129,24 @@ public class Elevator extends Thread {
             Request finalRequest = new Request(currentFloor);
             if (!ageFlag) {
                 int dis = Integer.MAX_VALUE;
-                for (Request request : outRequest) {
+                ArrayList<Request> list = new ArrayList<>();
+                list.addAll(inRequest);
+                list.addAll(outRequest);
+                /*for (Request request : outRequest) {
                     if (Math.abs(request.floor - currentFloor) <= dis) {
                         finalRequest = request;
                         dis = Math.abs(request.floor - currentFloor);
                     }
-                }
-                for (Request request : inRequest) {
-                    if (Math.abs(request.floor - currentFloor) <= dis) {
+                }*/
+                for (Request request : list) {
+                    if (Math.abs(request.floor - currentFloor) < dis) {
                         Request temp = finalRequest;
                         finalRequest = request;
-                        if ((finalRequest.floor - currentFloor < 0 && lastMove == Move.UP) || (finalRequest.floor - currentFloor > 0 && lastMove == Move.DOWN)) {
+                        /*if ((finalRequest.floor - currentFloor < 0 && lastMove == Move.UP) || (finalRequest.floor - currentFloor > 0 && lastMove == Move.DOWN)) {
                             finalRequest = temp;
+                            dis = Math.abs(finalRequest.floor - currentFloor);
                             continue;
-                        }
+                        }*/
                         dis = Math.abs(request.floor - currentFloor);
                     }
                 }
@@ -162,6 +172,8 @@ public class Elevator extends Thread {
             else {
                 try {
                     state = Move.STOP;
+                    if (currentFloor <= maxFloor / 2) lastMove = Move.DOWN;
+                    else lastMove = Move.UP;
                     Thread.sleep(TRAVELING_TIME);
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
@@ -175,7 +187,7 @@ public class Elevator extends Thread {
             outRequest.removeIf(r -> r.floor == currentFloor);
             long endTime = System.currentTimeMillis();
             try {
-                Thread.sleep(TRAVELING_TIME + 100 - (endTime - startTime));
+                Thread.sleep(100);//TRAVELING_TIME + 100 - (endTime - startTime)
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
